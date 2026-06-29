@@ -113,5 +113,50 @@ def import_model_url(url: str) -> str:
     return T.import_model_url(bridge, url)
 
 
+@mcp.tool()
+def keyframe(obj: str, frame: int, location: list | None = None,
+             rotation: list | None = None, scale: list | None = None) -> str:
+    """Animate an object: keyframe location/rotation(degrees)/scale at a frame."""
+    return T.keyframe(bridge, obj, frame, **_kw(location=location, rotation=rotation, scale=scale))
+
+
+@mcp.tool()
+def camera_move(kind: str, target: list | None = None, start_frame: int = 1,
+                end_frame: int = 120, amount: float | None = None) -> str:
+    """Keyframe a cinematic camera move: push_in|pull_out|orbit|crane_up|crane_down|dolly."""
+    return T.camera_move(bridge, kind, start_frame=start_frame, end_frame=end_frame,
+                         **_kw(target=target, amount=amount))
+
+
+@mcp.tool()
+def add_modifier(obj: str, kind: str, levels: int | None = None, width: float | None = None,
+                 segments: int | None = None, count: int | None = None,
+                 offset: list | None = None, thickness: float | None = None,
+                 axis: str | None = None, operation: str | None = None,
+                 other: str | None = None) -> str:
+    """Add a modifier: subsurf|bevel|array|solidify|mirror|wireframe|boolean."""
+    return T.add_modifier(bridge, obj, kind, **_kw(
+        levels=levels, width=width, segments=segments, count=count, offset=offset,
+        thickness=thickness, axis=axis, operation=operation, other=other))
+
+
+@mcp.tool()
+def material_preset(obj: str, preset: str, color: list | None = None) -> str:
+    """Apply a material preset: gold|silver|chrome|copper|glass|emission|plastic|rubber."""
+    return T.material_preset(bridge, obj, preset, **_kw(color=color))
+
+
+@mcp.tool()
+def search_textures(category: str = "", limit: int = 15) -> str:
+    """Search PolyHaven for free PBR texture slugs (wood, metal, brick, concrete...)."""
+    return T.search_textures(bridge, category, limit)
+
+
+@mcp.tool()
+def apply_texture(obj: str, slug: str, res: str = "2k") -> str:
+    """Download a PolyHaven PBR texture set and build a material on the object."""
+    return T.apply_texture(bridge, obj, slug, res)
+
+
 if __name__ == "__main__":
     mcp.run()
