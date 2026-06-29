@@ -95,5 +95,23 @@ def screenshot(max_size: int = 800):
     return Image(data=out, format="png") if isinstance(out, bytes) else out
 
 
+@mcp.tool()
+def search_hdris(category: str = "", limit: int = 15) -> str:
+    """Search PolyHaven for free HDRI environment slugs."""
+    return T.search_hdris(bridge, category, limit)
+
+
+@mcp.tool()
+def set_hdri(slug: str, res: str = "2k", strength: float = 1.0) -> str:
+    """Set a PolyHaven HDRI as the world environment (real lighting + reflections)."""
+    return T.set_hdri(bridge, slug, res, strength)
+
+
+@mcp.tool()
+def import_model_url(url: str) -> str:
+    """Download and import a 3D model from a direct URL (.glb/.gltf/.obj/.fbx)."""
+    return T.import_model_url(bridge, url)
+
+
 if __name__ == "__main__":
     mcp.run()

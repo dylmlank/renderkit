@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import urllib.request
 
 from core.bridge import BlenderBridge, BridgeError
 
@@ -176,12 +177,80 @@ finally:
         return f.read()
 
 
+# --- Asset import (real environments + models) -------------------------------
+
+def search_hdris(bridge: BlenderBridge, category: str = "", limit: int = 15) -> str:
+    """Search PolyHaven for HDRI environment slugs (free). Pick one for set_hdri.
+    Categories include: studio, outdoor, indoor, sunrise-sunset, night, nature."""
+    url = "https://api.polyhaven.com/assets?type=hdris"
+    if category:
+        url += f"&categories={category}"
+    try:
+        with urllib.request.urlopen(url, timeout=20) as r:
+            data = json.loads(r.read().decode())
+    except Exception as e:
+        return f"PolyHaven search failed: {e}"
+    slugs = list(data.keys())[:int(limit)]
+    return ("HDRIs (use a slug with set_hdri): " + ", ".join(slugs)) if slugs \
+        else "No HDRIs found for that category."
+
+
+def set_hdri(bridge: BlenderBridge, slug: str, res: str = "2k", strength: float = 1.0) -> str:
+    """Download a PolyHaven HDRI and set it as the world environment — real
+    image-based lighting and reflections. res = 1k|2k|4k."""
+    url = f"https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/{res}/{slug}_{res}.hdr"
+    code = f"""
+import bpy, os, tempfile, urllib.request
+path = os.path.join(tempfile.gettempdir(), "{slug}_{res}.hdr")
+if not os.path.exists(path):
+    urllib.request.urlretrieve("{url}", path)
+w = bpy.context.scene.world or bpy.data.worlds.new("World")
+bpy.context.scene.world = w
+w.use_nodes = True
+nt = w.node_tree
+nt.nodes.clear()
+bg = nt.nodes.new("ShaderNodeBackground"); bg.inputs["Strength"].default_value = {strength}
+env = nt.nodes.new("ShaderNodeTexEnvironment"); env.image = bpy.data.images.load(path)
+out = nt.nodes.new("ShaderNodeOutputWorld")
+nt.links.new(env.outputs["Color"], bg.inputs["Color"])
+nt.links.new(bg.outputs["Background"], out.inputs["Surface"])
+"""
+    try:
+        bridge.run_code("import bpy\n" + code)
+    except BridgeError as e:
+        return str(e)
+    return f"World HDRI set to '{slug}' ({res})."
+
+
+def import_model_url(bridge: BlenderBridge, url: str) -> str:
+    """Download and import a 3D model from a direct URL (.glb/.gltf/.obj/.fbx)."""
+    ext = url.lower().split("?")[0].rsplit(".", 1)[-1]
+    importer = {"glb": "bpy.ops.import_scene.gltf(filepath=p)",
+                "gltf": "bpy.ops.import_scene.gltf(filepath=p)",
+                "obj": "bpy.ops.wm.obj_import(filepath=p)",
+                "fbx": "bpy.ops.import_scene.fbx(filepath=p)"}.get(ext)
+    if not importer:
+        return f"Unsupported model type '.{ext}' (use glb/gltf/obj/fbx)."
+    code = f"""
+import bpy, os, tempfile, urllib.request
+p = os.path.join(tempfile.gettempdir(), "rk_model.{ext}")
+urllib.request.urlretrieve("{url}", p)
+{importer}
+"""
+    try:
+        bridge.run_code("import bpy\n" + code)
+    except BridgeError as e:
+        return str(e)
+    return f"Imported model from {url}."
+
+
 _HANDLERS = {
     "get_scene_info": get_scene_info, "get_object_info": get_object_info,
     "run_blender_code": run_blender_code, "add_primitive": add_primitive,
     "add_material": add_material, "three_point_lighting": three_point_lighting,
     "add_camera": add_camera, "turntable": turntable, "setup_render": setup_render,
     "render": render, "screenshot": screenshot,
+    "search_hdris": search_hdris, "set_hdri": set_hdri, "import_model_url": import_model_url,
 }
 
 _VEC3 = {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
@@ -220,6 +289,18 @@ TOOLS = [
     {"name": "screenshot",
      "description": "Capture the current Blender view as an image and SEE it. Use this to check your work and iterate on composition, lighting, and materials.",
      "input_schema": {"type": "object", "properties": {"max_size": {"type": "integer", "description": "longest edge in px, default 800"}}, "required": []}},
+    {"name": "search_hdris",
+     "description": "Search PolyHaven for free HDRI environment slugs (categories: studio, outdoor, indoor, sunrise-sunset, night, nature). Pick one for set_hdri.",
+     "input_schema": {"type": "object", "properties": {
+         "category": {"type": "string"}, "limit": {"type": "integer"}}, "required": []}},
+    {"name": "set_hdri",
+     "description": "Set a PolyHaven HDRI as the world environment for real image-based lighting + reflections. res = 1k|2k|4k.",
+     "input_schema": {"type": "object", "properties": {
+         "slug": {"type": "string"}, "res": {"type": "string"}, "strength": {"type": "number"}},
+      "required": ["slug"]}},
+    {"name": "import_model_url",
+     "description": "Download and import a 3D model from a direct URL (.glb/.gltf/.obj/.fbx).",
+     "input_schema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}},
 ]
 
 

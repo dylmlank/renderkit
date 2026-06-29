@@ -18,10 +18,14 @@ The `run_blender_code` tool is the escape hatch — it can do anything Blender's
 Python API can, so *"model a low-poly spaceship and orbit a camera around it"*
 becomes a sequence of tool calls.
 
-**Vision feedback loop (new):** the `screenshot` tool OpenGL-renders the current
-view and hands the image back to Claude, so it can **see** the scene and iterate —
-*"make the lighting more dramatic"* → screenshot → adjust → screenshot again. This
-closes the perception loop that makes cinematics actually look good.
+**Vision feedback loop:** the `screenshot` tool OpenGL-renders the current view and
+hands the image back to Claude, so it can **see** the scene and iterate — *"make the
+lighting more dramatic"* → screenshot → adjust → screenshot again.
+
+**Asset import (new):** `search_hdris` + `set_hdri` pull free PolyHaven HDRIs for
+real image-based lighting and reflections (the jump from gray blobs to a believable
+scene), and `import_model_url` brings in any `.glb/.gltf/.obj/.fbx` from a direct
+URL. Downloads happen on the Blender side — no extra addon features required.
 
 ## Setup
 
