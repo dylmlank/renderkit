@@ -6,8 +6,12 @@ named tools don't cover.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 
 from core.bridge import BlenderBridge, BridgeError
+
+_SHOT_PATH = os.path.join(tempfile.gettempdir(), "renderkit_view.png")
 
 
 def get_scene_info(bridge: BlenderBridge) -> str:
@@ -142,12 +146,42 @@ def render(bridge: BlenderBridge, animation: bool = True) -> str:
     return _run(bridge, call).replace("Done.", "Render finished.")
 
 
+def screenshot(bridge: BlenderBridge, max_size: int = 800):
+    """OpenGL-render the current view to a PNG and return the bytes so Claude can
+    SEE the scene and iterate. Returns bytes on success, an error string on failure."""
+    w = int(max_size)
+    h = int(max_size * 9 / 16)
+    path = _SHOT_PATH.replace("\\", "\\\\")
+    code = f"""
+import bpy
+sc = bpy.context.scene
+ox, oy = sc.render.resolution_x, sc.render.resolution_y
+of = sc.render.image_settings.file_format
+sc.render.resolution_x = {w}; sc.render.resolution_y = {h}
+sc.render.image_settings.file_format = 'PNG'
+try:
+    bpy.ops.render.opengl(write_still=False)
+    bpy.data.images['Render Result'].save_render(filepath=r"{path}")
+finally:
+    sc.render.resolution_x = ox; sc.render.resolution_y = oy
+    sc.render.image_settings.file_format = of
+"""
+    try:
+        bridge.run_code("import bpy\n" + code)
+    except BridgeError as e:
+        return str(e)
+    if not os.path.exists(_SHOT_PATH):
+        return "Screenshot failed (no image written). The scene may have no camera/view."
+    with open(_SHOT_PATH, "rb") as f:
+        return f.read()
+
+
 _HANDLERS = {
     "get_scene_info": get_scene_info, "get_object_info": get_object_info,
     "run_blender_code": run_blender_code, "add_primitive": add_primitive,
     "add_material": add_material, "three_point_lighting": three_point_lighting,
     "add_camera": add_camera, "turntable": turntable, "setup_render": setup_render,
-    "render": render,
+    "render": render, "screenshot": screenshot,
 }
 
 _VEC3 = {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
@@ -183,6 +217,9 @@ TOOLS = [
          "animation": {"type": "boolean"}}, "required": ["output_path"]}},
     {"name": "render", "description": "Render the scene (animation=True for the full frame range, else a still).",
      "input_schema": {"type": "object", "properties": {"animation": {"type": "boolean"}}, "required": []}},
+    {"name": "screenshot",
+     "description": "Capture the current Blender view as an image and SEE it. Use this to check your work and iterate on composition, lighting, and materials.",
+     "input_schema": {"type": "object", "properties": {"max_size": {"type": "integer", "description": "longest edge in px, default 800"}}, "required": []}},
 ]
 
 

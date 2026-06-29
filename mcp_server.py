@@ -11,7 +11,7 @@ claude_desktop_config.json:
 """
 from __future__ import annotations
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 
 from core import BlenderBridge
 import core.tools as T
@@ -86,6 +86,13 @@ def setup_render(output_path: str, engine: str = "EEVEE", animation: bool = True
 def render(animation: bool = True) -> str:
     """Render the scene (animation=True for the frame range, else a still)."""
     return T.render(bridge, animation)
+
+
+@mcp.tool()
+def screenshot(max_size: int = 800):
+    """Capture the current Blender view as an image so Claude can see and iterate."""
+    out = T.screenshot(bridge, max_size)
+    return Image(data=out, format="png") if isinstance(out, bytes) else out
 
 
 if __name__ == "__main__":

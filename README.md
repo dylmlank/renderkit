@@ -18,6 +18,11 @@ The `run_blender_code` tool is the escape hatch — it can do anything Blender's
 Python API can, so *"model a low-poly spaceship and orbit a camera around it"*
 becomes a sequence of tool calls.
 
+**Vision feedback loop (new):** the `screenshot` tool OpenGL-renders the current
+view and hands the image back to Claude, so it can **see** the scene and iterate —
+*"make the lighting more dramatic"* → screenshot → adjust → screenshot again. This
+closes the perception loop that makes cinematics actually look good.
+
 ## Setup
 
 **1. Enable the blender-mcp addon (once)** — install `addon.py` from

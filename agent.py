@@ -8,6 +8,7 @@ Anthropic SDK manual tool-use loop, claude-opus-4-8, adaptive thinking.
 """
 from __future__ import annotations
 
+import base64
 import sys
 
 import anthropic
@@ -43,9 +44,15 @@ def run(bridge, client, user_text, history):
         for block in resp.content:
             if block.type == "tool_use":
                 out = dispatch(bridge, block.name, block.input)
-                preview = out if len(out) < 200 else out[:200] + "..."
-                print(f"  · {block.name} -> {preview}")
-                results.append({"type": "tool_result", "tool_use_id": block.id, "content": out})
+                if isinstance(out, bytes):  # screenshot -> show Claude the image
+                    print(f"  · {block.name} -> [image {len(out)} bytes]")
+                    content = [{"type": "image", "source": {
+                        "type": "base64", "media_type": "image/png",
+                        "data": base64.standard_b64encode(out).decode()}}]
+                else:
+                    print(f"  · {block.name} -> {out if len(out) < 200 else out[:200] + '...'}")
+                    content = out
+                results.append({"type": "tool_result", "tool_use_id": block.id, "content": content})
         history.append({"role": "user", "content": results})
 
 
