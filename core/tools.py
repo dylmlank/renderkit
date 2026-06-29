@@ -186,7 +186,8 @@ def search_hdris(bridge: BlenderBridge, category: str = "", limit: int = 15) -> 
     if category:
         url += f"&categories={category}"
     try:
-        with urllib.request.urlopen(url, timeout=20) as r:
+        req = urllib.request.Request(url, headers={"User-Agent": "renderkit/1.0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
             data = json.loads(r.read().decode())
     except Exception as e:
         return f"PolyHaven search failed: {e}"
@@ -203,7 +204,9 @@ def set_hdri(bridge: BlenderBridge, slug: str, res: str = "2k", strength: float 
 import bpy, os, tempfile, urllib.request
 path = os.path.join(tempfile.gettempdir(), "{slug}_{res}.hdr")
 if not os.path.exists(path):
-    urllib.request.urlretrieve("{url}", path)
+    _req = urllib.request.Request("{url}", headers={{"User-Agent": "renderkit/1.0"}})
+    with urllib.request.urlopen(_req) as _r, open(path, "wb") as _f:
+        _f.write(_r.read())
 w = bpy.context.scene.world or bpy.data.worlds.new("World")
 bpy.context.scene.world = w
 w.use_nodes = True
@@ -234,7 +237,9 @@ def import_model_url(bridge: BlenderBridge, url: str) -> str:
     code = f"""
 import bpy, os, tempfile, urllib.request
 p = os.path.join(tempfile.gettempdir(), "rk_model.{ext}")
-urllib.request.urlretrieve("{url}", p)
+_req = urllib.request.Request("{url}", headers={{"User-Agent": "renderkit/1.0"}})
+with urllib.request.urlopen(_req) as _r, open(p, "wb") as _f:
+    _f.write(_r.read())
 {importer}
 """
     try:
