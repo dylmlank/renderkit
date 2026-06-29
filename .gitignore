@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Output / secrets
+output/
+.env
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
